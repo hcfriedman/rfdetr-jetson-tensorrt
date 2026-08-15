@@ -1,0 +1,20 @@
+[project]
+name = "rfdetr-jetson-tensorrt"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Henry Friedman", email = "henrycfriedman@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python>=5.0.0.93",
+    "pypylon>=26.7",
+]
+
+[project.scripts]
+rfdetr-jetson-tensorrt = "rfdetr_jetson_tensorrt:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
