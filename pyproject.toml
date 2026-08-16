@@ -6,15 +6,28 @@ readme = "README.md"
 authors = [
     { name = "Henry Friedman", email = "henrycfriedman@gmail.com" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.11"
 dependencies = [
-    "opencv-python>=5.0.0.93",
+    "nvidia-cudss-cu12",
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+    "onnx>=1.22.0",
+    "onnxruntime-gpu==1.24.0",
+    "opencv-python>=4.10,<5",
     "pypylon>=26.7",
+    "rfdetr>=1.9.2",
+    "numpy<2",
 ]
 
-[project.scripts]
-rfdetr-jetson-tensorrt = "rfdetr_jetson_tensorrt:main"
+[tool.uv]
+package = false
 
-[build-system]
-requires = ["uv_build>=0.12.5,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv.sources]
+torch = { index = "jetson" }
+torchvision = { index = "jetson" }
+onnxruntime-gpu = { index = "jetson" }
+
+[[tool.uv.index]]
+name = "jetson"
+url = "https://pypi.jetson-ai-lab.io/jp6/cu126"
+explicit = true
