@@ -1,4 +1,4 @@
-from vendored_rfdetr.onnx_helpers import _create_onnx_session, _preprocess_pil_to_nchw
+from vendored_rfdetr.onnx_helpers import _create_onnx_session, _preprocess_pil_to_nchw, _decode_raw_outputs
 import threading
 from acquisition import LatestFrame, loop_grab_and_update_latest_frame
 import onnxruntime as ort
@@ -8,11 +8,17 @@ from collections.abc import Callable
 from typing import Any, NamedTuple
 import time
 import gc
+import supervision as sv
+import cv2
 
 WARMUP_RUNS = 20
 MEASURE_RUNS = 100
+CONFIDENCE_THRESHOLD = 0.5
 ONNX_PATH = r"models/rfdetr_small.onnx/rfdetr-small.onnx"
 PROVIDER_CONFIGS = ( ["CUDAExecutionProvider", "CPUExecutionProvider"], ["CPUExecutionProvider"])
+VIEW_LIVE_DETECTION = False
+CV2_LIVE_FEED_WAITKEY = 1 # show a continuous image stream
+QUIT_KEY = 'q'
 
 # class taken from https://github.com/roboflow/rf-detr: docs/cookbooks/inference-latency-benchmark.ipynb
 class BenchmarkResult(NamedTuple):
@@ -44,12 +50,15 @@ def main():
 
     # initialize latest frame class, thread for gathering images
     latest_frame = LatestFrame()
-
     stop = threading.Event()
-
     live_frame_thread = threading.Thread(target=loop_grab_and_update_latest_frame, args=(latest_frame, stop), daemon=True)
 
+    # start thread for grabbing frames
     live_frame_thread.start()
+
+    # initialize annotators
+    box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
     
     try:
         for providers in PROVIDER_CONFIGS:
@@ -62,20 +71,40 @@ def main():
             
             inputs = onnx_session.get_inputs()
             input_name = inputs[0].name
+            output_names = [o.name for o in onnx_session.get_outputs()]
             
-            current_frame_number = 0
             timings = []
+            current_frame_number = 0
             for usable_frame in range(WARMUP_RUNS + MEASURE_RUNS):
                 current_frame, current_frame_number = latest_frame.get_new_latest_frame(current_frame_number)
                 input_meta = onnx_session.get_inputs()[0]
                 _, channels, height, width = input_meta.shape
                 inference_formatted_current_frame = _preprocess_pil_to_nchw(Image.fromarray(current_frame), height, width, channels)
                 t0 = time.perf_counter()
-                onnx_session.run(None, {input_name: inference_formatted_current_frame})
+                raw_outputs = onnx_session.run(None, {input_name: inference_formatted_current_frame})
                 if usable_frame >= WARMUP_RUNS:
                     timings.append((time.perf_counter() - t0) * 1000.0)
+                    detections = _decode_raw_outputs(
+                    raw_outputs=raw_outputs,
+                    output_names=output_names,
+                    original_size=(current_frame.shape[1], current_frame.shape[0]),
+                    threshold=CONFIDENCE_THRESHOLD,
+                    num_select=None
+                    )
 
-            # clean up due to tight memory budget
+                    # display live detections if set
+                    if VIEW_LIVE_DETECTION:
+                        bgr_image = current_frame[:,:,::-1].copy()
+                        display_image = box_annotator.annotate(bgr_image, detections)
+                        display_image = label_annotator.annotate(display_image,
+                                                    detections, 
+                                                    labels= [f"{c} {s:.2f}" for c, s in zip(detections.class_id, detections.confidence)])
+                        cv2.imshow("Live Detections", display_image)
+                        if cv2.waitKey(CV2_LIVE_FEED_WAITKEY) &0xFF == ord(QUIT_KEY):
+                            break
+
+
+            # clean up due to potentially tight memory budget
             del onnx_session
             gc.collect()
 
