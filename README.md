@@ -10,17 +10,18 @@ uv run python export_rfdetr_to_onnx.py   # generates models/ (.onnx not committe
 
 ## Benchmark
 ```bash
+sudo nvpmodel -m 2    # MAXN_SUPER power mode (25W is the default mode)
 sudo jetson_clocks    # lock clocks, unlocked runs are ~50% slower and noisy
 uv run python onnx_runtime_inference.py
 ```
 
 ## Results
-RFDETRSmall, live Basler frames, Jetson Orin Nano, jetson_clocks locked, 100 runs, inference only:
+RFDETRSmall, live Basler frames, Jetson Orin Nano Super, jetson_clocks locked, 100 runs, inference only:
 
-| Backend | Latency | FPS |
+| Backend | 25W mode | MAXN_SUPER |
 |---|---|---|
-| ONNX Runtime CUDA (FP32) | 60.6 ms ± 1.0 | 16.5 |
-| ONNX Runtime CPU (FP32) | 654 ms ± 22 | 1.5 |
+| ONNX Runtime CUDA (FP32) | 60.6 ms ± 1.0 (16.5 FPS) | 56.1 ms ± 1.6 (17.8 FPS) |
+| ONNX Runtime CPU (FP32) | 651 ms ± 5 (1.5 FPS) | 521 ms ± 19 (1.9 FPS) |
 
 ## Notes
 - Never import torch or rfdetr in the inference/benchmark process. 
