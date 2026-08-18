@@ -73,29 +73,31 @@ def loop_grab_and_update_latest_frame(latest_frame: LatestFrame, stop: threading
                 except pylon.TimeoutException as e:
                     print(f"error retrieving frame: {e}")   
         
-        # cleanup
+        # cleanup camera
         finally:
             print("cleaning up")
             camera.StopGrabbing()
 
 def main():
 
+    # initialize latest frame class and loop for grabbing latest frame
     latest_frame = LatestFrame()
-
     stop = threading.Event()
-
     live_frame_thread = threading.Thread(target=loop_grab_and_update_latest_frame, args=(latest_frame, stop), daemon=True)
 
+    # start thread
     live_frame_thread.start()
 
     current_frame_number = 0
     try:
+        # loop to get an updated frame and display it
         while True:
             current_frame, current_frame_number = latest_frame.get_new_latest_frame(current_frame_number)
-            if current_frame is not None:
-                cv2.imshow(IMAGE_WINDOW_NAME, current_frame[:,:,::-1]) # reverse channel order due to opencv b,g,r channel ordering
-                if cv2.waitKey(CV2_LIVE_FEED_WAITKEY) & 0xFF == ord(QUIT_KEY):
-                    break
+            cv2.imshow(IMAGE_WINDOW_NAME, current_frame[:,:,::-1]) # reverse channel order due to opencv b,g,r channel ordering
+            if cv2.waitKey(CV2_LIVE_FEED_WAITKEY) & 0xFF == ord(QUIT_KEY):
+                break
+    
+    # clean up thread and display window
     finally:
         stop.set()
         live_frame_thread.join()
