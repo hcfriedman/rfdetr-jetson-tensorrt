@@ -13,7 +13,7 @@ import cv2
 WARMUP_RUNS = 20
 MEASURE_RUNS = 100
 CONFIDENCE_THRESHOLD = 0.5
-ENGINE_PATH = "models/rfdetr_small_fp16.engine"
+ENGINE_PATH = "models/rfdetr_small_fp32.engine"
 VIEW_LIVE_DETECTION = False
 CV2_LIVE_FEED_WAITKEY = 1 # show a continuous image stream
 QUIT_KEY = 'q'
@@ -88,7 +88,7 @@ class TensorRTEngine:
             cudart.cudaMemcpyKind.cudaMemcpyHostToDevice, self.stream,
         ))
 
-        # execute stream
+        # run inference
         self.context.execute_async_v3(self.stream)
 
         # copy outputs to self.host_outputs
@@ -133,7 +133,7 @@ def main():
             preprocessed_frame = _preprocess_pil_to_nchw(Image.fromarray(current_frame), engine.input_shape[2], engine.input_shape[3], engine.input_shape[1])
             preprocessed_frame = np.ascontiguousarray(preprocessed_frame)
 
-            # initialize timing and run inference
+            # time and run inference
             t0 = time.perf_counter()
             engine.run_inference(preprocessed_frame)
             if usable_frame >= WARMUP_RUNS:
@@ -163,9 +163,12 @@ def main():
                         cv2.destroyAllWindows()
                         break
         
+        # clean up engine and display window if needed
         engine.free_and_cleanup()
+        if VIEW_LIVE_DETECTION:
+            cv2.destroyAllWindows()
 
-        # crunch and print timing data
+        # compute and print timing stats
         timings_array = np.array(timings)
         benchmark_result = BenchmarkResult(
             label=f"TensorRT at {ENGINE_PATH}",
