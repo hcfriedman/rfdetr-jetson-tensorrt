@@ -17,6 +17,7 @@ dependencies = [
     "pypylon>=26.7",
     "rfdetr>=1.9.2",
     "numpy<2",
+    "cuda-python==12.6.*",
 ]
 
 [tool.uv]
