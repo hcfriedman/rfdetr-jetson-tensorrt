@@ -45,7 +45,7 @@ def loop_grab_and_update_latest_frame(latest_frame: LatestFrame, stop: threading
 
         # set exposure of camera
         camera.ExposureTime.SetValue(EXPOSURE_TIME)
-        print(f"camera exposure is {camera.ExposureTime.GetValue()}")
+        print(f"camera exposure is {camera.ExposureTime.GetValue()}us")
 
         # begin grabbing images
         camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
